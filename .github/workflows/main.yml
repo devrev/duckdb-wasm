@@ -24,6 +24,14 @@ jobs:
       - run: |
           git submodule init
           git submodule update
+          # Install package
+          sudo apt install -y ccache
+          sudo /usr/sbin/update-ccache-symlinks
+          echo 'export PATH="/usr/lib/ccache:$PATH"' | tee -a ~/.bashrc
+          sudo apt-get install emscripten  
+
+
+          source ~/.bashrc && echo $PATH
           DUCKDB_JSON=1 make wasm
           cd packages/duckdb-wasm
           yarn install && yarn build:release
