@@ -29,4 +29,3 @@ jobs:
           yarn install && yarn build:release
           echo "//npm.pkg.github.com/:_authToken=${{secrets.NPM_PACKAGE_PUBLISH_TOKEN}}" >> .npmrc
           npm publish
-          
