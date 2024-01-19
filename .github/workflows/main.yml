@@ -21,9 +21,13 @@ jobs:
           registry-url: https://npm.pkg.github.com/
           scope: '@devrev'
       - run: npm install -g yarn
-      - run: |
-          git submodule init
-          git submodule update
-          cd packages/duckdb-wasm
-          echo "//npm.pkg.github.com/:_authToken=${{secrets.NPM_PACKAGE_PUBLISH_TOKEN}}" >> .npmrc
-          npm publish
+      - name: publish package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_PACKAGE_PUBLISH_TOKEN }}
+        run: |
+            git submodule init
+            git submodule update
+            cd packages/duckdb-wasm
+            echo "//npm.pkg.github.com/:_authToken=${{secrets.NPM_PACKAGE_PUBLISH_TOKEN}}" >> .npmrc
+            npm publish
+        
