@@ -1,8 +1,8 @@
 name: "publish package"
+
 on:
   push:
     branches:
-      - master
       - main
 jobs:
   publish-npm:
