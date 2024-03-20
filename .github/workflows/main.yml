@@ -1,33 +1,31 @@
-name: "publish package"
-
+name: 'publish package'
 on:
-  push:
-    branches:
-      - main
+    push:
+        branches:
+            - main
 jobs:
-  publish-npm:
-    runs-on: ubuntu-latest
-    permissions:
-      packages: write
-      contents: write
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: true
-          ref: 'v1.28.0branch'
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 18.17
-          registry-url: https://npm.pkg.github.com/
-          scope: '@devrev'
-      - run: npm install -g yarn
-      - name: publish package
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_PACKAGE_PUBLISH_TOKEN }}
-        run: |
-            git submodule init
-            git submodule update
-            cd packages/duckdb-wasm
-            echo "//npm.pkg.github.com/:_authToken=${{secrets.NPM_PACKAGE_PUBLISH_TOKEN}}" >> .npmrc
-            npm publish
-        
+    publish-npm:
+        runs-on: ubuntu-latest
+        permissions:
+            packages: write
+            contents: write
+        steps:
+            - uses: actions/checkout@v3
+              with:
+                  submodules: true
+                  ref: 'feat/devrev-duckdb-version-v1.27.1-dev-115.0'
+            - uses: actions/setup-node@v3
+              with:
+                  node-version: 18.17
+                  registry-url: https://npm.pkg.github.com/
+                  scope: '@devrev'
+            - run: npm install -g yarn
+            - name: publish package
+              env:
+                NODE_AUTH_TOKEN: ${{ secrets.NPM_PACKAGE_PUBLISH_TOKEN }}
+              run: |
+                  git submodule init
+                  git submodule update
+                  cd packages/duckdb-wasm
+                  echo "//npm.pkg.github.com/:_authToken=${{secrets.NPM_PACKAGE_PUBLISH_TOKEN}}" >> .npmrc
+                  npm publish
