@@ -91,9 +91,11 @@ export abstract class DuckDBBrowserBindings extends DuckDBBindingsBase {
                 const response = fetchWithProgress();
 
                 const initiateStreaming = async () => {
-                    await WebAssembly.instantiateStreaming(response, imports).then(output => {
-                        success(output.instance, output.module);
-                    }).catch(error => {
+                    try{
+                        await WebAssembly.instantiateStreaming(response, imports).then(output => {
+                            success(output.instance, output.module);
+                        });
+                    } catch (error: any) {
                         this.logger.log({
                             timestamp: new Date(),
                             level: LogLevel.ERROR,
@@ -102,8 +104,9 @@ export abstract class DuckDBBrowserBindings extends DuckDBBindingsBase {
                             event: LogEvent.ERROR,
                             value: 'Failed to instantiate WASM: ' + error,
                         });
+
                         throw new Error(error);
-                    });
+                    }
                 };
 
                 initiateStreaming();
@@ -113,9 +116,11 @@ export abstract class DuckDBBrowserBindings extends DuckDBBindingsBase {
                 const request = new Request(this.mainModuleURL);
 
                 const initiateStreaming = async () => {
-                    await WebAssembly.instantiateStreaming(fetch(request), imports).then(output => {
-                        success(output.instance, output.module);
-                    }).catch(error => {
+                    try {
+                        await WebAssembly.instantiateStreaming(fetch(request), imports).then(output => {
+                            success(output.instance, output.module);
+                        })
+                    } catch (error: any){
                         this.logger.log({
                             timestamp: new Date(),
                             level: LogLevel.ERROR,
@@ -124,8 +129,9 @@ export abstract class DuckDBBrowserBindings extends DuckDBBindingsBase {
                             event: LogEvent.ERROR,
                             value: 'Failed to instantiate WASM: ' + error,
                         });
+
                         throw new Error(error);
-                    });
+                    }
                 };
 
                 initiateStreaming();
