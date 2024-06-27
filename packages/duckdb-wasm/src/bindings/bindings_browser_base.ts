@@ -89,15 +89,47 @@ export abstract class DuckDBBrowserBindings extends DuckDBBindingsBase {
                 };
                 // Instantiate streaming
                 const response = fetchWithProgress();
-                WebAssembly.instantiateStreaming(response, imports).then(output => {
-                    success(output.instance, output.module);
-                });
+
+                const initiateStreaming = async () => {
+                    await WebAssembly.instantiateStreaming(response, imports).then(output => {
+                        success(output.instance, output.module);
+                    }).catch(error => {
+                        this.logger.log({
+                            timestamp: new Date(),
+                            level: LogLevel.ERROR,
+                            origin: LogOrigin.BINDINGS,
+                            topic: LogTopic.INSTANTIATE,
+                            event: LogEvent.ERROR,
+                            value: 'Failed to instantiate WASM: ' + error,
+                        });
+                        throw new Error(error);
+                    });
+                };
+
+                initiateStreaming();
+
             } else {
                 console.warn('instantiating without progress handler since transform streams are unavailable');
                 const request = new Request(this.mainModuleURL);
-                WebAssembly.instantiateStreaming(fetch(request), imports).then(output => {
-                    success(output.instance, output.module);
-                });
+
+                const initiateStreaming = async () => {
+                    await WebAssembly.instantiateStreaming(fetch(request), imports).then(output => {
+                        success(output.instance, output.module);
+                    }).catch(error => {
+                        this.logger.log({
+                            timestamp: new Date(),
+                            level: LogLevel.ERROR,
+                            origin: LogOrigin.BINDINGS,
+                            topic: LogTopic.INSTANTIATE,
+                            event: LogEvent.ERROR,
+                            value: 'Failed to instantiate WASM: ' + error,
+                        });
+                        throw new Error(error);
+                    });
+                };
+
+                initiateStreaming();
+
             }
         } else if (typeof XMLHttpRequest == 'function') {
             // Otherwise we fall back to XHRs
