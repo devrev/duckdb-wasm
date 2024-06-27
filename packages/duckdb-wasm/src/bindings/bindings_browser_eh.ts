@@ -17,12 +17,12 @@ export class DuckDB extends DuckDBBrowserBindings {
     }
 
     /** Instantiate the bindings */
-    protected instantiateImpl(moduleOverrides: Partial<DuckDBModule>): Promise<DuckDBModule> {
+    protected async instantiateImpl(moduleOverrides: Partial<DuckDBModule>): Promise<DuckDBModule> {
         try{
             const wasm = this.instantiateWasm.bind(this);
             const locateFile = this.locateFile.bind(this);
 
-            return DuckDBWasm({
+            return await DuckDBWasm({
                 ...moduleOverrides,
                 instantiateWasm: wasm,
                 locateFile: locateFile,
