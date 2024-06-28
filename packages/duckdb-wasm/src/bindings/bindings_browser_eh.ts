@@ -2,7 +2,7 @@ import DuckDBWasm from './duckdb-eh.js';
 import { DuckDBBrowserBindings } from './bindings_browser_base';
 import { DuckDBModule } from './duckdb_module';
 import { DuckDBRuntime } from './runtime';
-import { Logger } from '../log';
+import { LogEvent, LogLevel, LogOrigin, LogTopic, Logger } from '../log';
 
 /** DuckDB bindings for the browser */
 export class DuckDB extends DuckDBBrowserBindings {
@@ -27,9 +27,17 @@ export class DuckDB extends DuckDBBrowserBindings {
                 instantiateWasm: wasm,
                 locateFile: locateFile,
             });
-        } catch (e) {
-            console.error(e);
-            throw e;
+        } catch (error : any) {
+            this.logger.log({
+                timestamp: new Date(),
+                level: LogLevel.ERROR,
+                origin: LogOrigin.BINDINGS,
+                topic: LogTopic.INSTANTIATE,
+                event: LogEvent.ERROR,
+                value: 'Failed to instantiate WASM: ' + error,
+            });
+
+            throw error;
         }
     }
 }
