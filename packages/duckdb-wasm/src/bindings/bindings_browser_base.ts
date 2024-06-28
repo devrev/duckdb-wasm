@@ -34,7 +34,7 @@ export abstract class DuckDBBrowserBindings extends DuckDBBindingsBase {
     }
 
     /** Instantiate the wasm module */
-    protected instantiateWasm(
+    protected async instantiateWasm(
         // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
         imports: any,
         success: (instance: WebAssembly.Instance, module: WebAssembly.Module) => void,
@@ -92,9 +92,9 @@ export abstract class DuckDBBrowserBindings extends DuckDBBindingsBase {
 
                 const initiateStreaming = async () => {
                     try{
-                        await WebAssembly.instantiateStreaming(response, imports).then(output => {
-                            success(output.instance, output.module);
-                        });
+                        const output = await WebAssembly.instantiateStreaming(response, imports);
+                        success(output.instance, output.module);
+                       
                     } catch (error: any) {
                         this.logger.log({
                             timestamp: new Date(),
@@ -105,11 +105,11 @@ export abstract class DuckDBBrowserBindings extends DuckDBBindingsBase {
                             value: 'Failed to instantiate WASM: ' + error,
                         });
 
-                        throw new Error(error);
+                        throw error;
                     }
                 };
 
-                initiateStreaming();
+                await initiateStreaming();
 
             } else {
                 console.warn('instantiating without progress handler since transform streams are unavailable');
@@ -117,9 +117,9 @@ export abstract class DuckDBBrowserBindings extends DuckDBBindingsBase {
 
                 const initiateStreaming = async () => {
                     try {
-                        await WebAssembly.instantiateStreaming(fetch(request), imports).then(output => {
-                            success(output.instance, output.module);
-                        })
+                        const output = await WebAssembly.instantiateStreaming(fetch(request), imports);
+                        success(output.instance, output.module);
+
                     } catch (error: any){
                         this.logger.log({
                             timestamp: new Date(),
@@ -130,11 +130,11 @@ export abstract class DuckDBBrowserBindings extends DuckDBBindingsBase {
                             value: 'Failed to instantiate WASM: ' + error,
                         });
 
-                        throw new Error(error);
+                        throw error;
                     }
                 };
 
-                initiateStreaming();
+                await initiateStreaming();
 
             }
         } else if (typeof XMLHttpRequest == 'function') {
