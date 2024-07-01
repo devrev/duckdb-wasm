@@ -20445,7 +20445,7 @@ return true;`);
       throw new Error(`WASM instantiation requested unexpected file: prefix=${prefix} path=${path}`);
     }
     /** Instantiate the wasm module */
-    instantiateWasm(imports, success) {
+    async instantiateWasm(imports, success) {
       globalThis.DUCKDB_RUNTIME = this._runtime;
       const handlers = this.onInstantiationProgress;
       if (WebAssembly.instantiateStreaming) {
@@ -20481,15 +20481,43 @@ return true;`);
             return new Response(response2.body?.pipeThrough(ts), response2);
           };
           const response = fetchWithProgress();
-          WebAssembly.instantiateStreaming(response, imports).then((output) => {
-            success(output.instance, output.module);
-          });
+          const initiateStreaming = async () => {
+            try {
+              const output = await WebAssembly.instantiateStreaming(response, imports);
+              success(output.instance, output.module);
+            } catch (error) {
+              this.logger.log({
+                timestamp: /* @__PURE__ */ new Date(),
+                level: 4 /* ERROR */,
+                origin: 3 /* BINDINGS */,
+                topic: 5 /* INSTANTIATE */,
+                event: 2 /* ERROR */,
+                value: "Failed to instantiate WASM: " + error
+              });
+              throw error;
+            }
+          };
+          await initiateStreaming();
         } else {
           console.warn("instantiating without progress handler since transform streams are unavailable");
           const request = new Request(this.mainModuleURL);
-          WebAssembly.instantiateStreaming(fetch(request), imports).then((output) => {
-            success(output.instance, output.module);
-          });
+          const initiateStreaming = async () => {
+            try {
+              const output = await WebAssembly.instantiateStreaming(fetch(request), imports);
+              success(output.instance, output.module);
+            } catch (error) {
+              this.logger.log({
+                timestamp: /* @__PURE__ */ new Date(),
+                level: 4 /* ERROR */,
+                origin: 3 /* BINDINGS */,
+                topic: 5 /* INSTANTIATE */,
+                event: 2 /* ERROR */,
+                value: "Failed to instantiate WASM: " + error
+              });
+              throw error;
+            }
+          };
+          await initiateStreaming();
         }
       } else if (typeof XMLHttpRequest == "function") {
         const xhr = new XMLHttpRequest();
@@ -20582,12 +20610,26 @@ return true;`);
       super(logger, runtime, mainModuleURL, pthreadWorkerURL);
     }
     /** Instantiate the bindings */
-    instantiateImpl(moduleOverrides) {
-      return (0, import_duckdb_eh.default)({
-        ...moduleOverrides,
-        instantiateWasm: this.instantiateWasm.bind(this),
-        locateFile: this.locateFile.bind(this)
-      });
+    async instantiateImpl(moduleOverrides) {
+      try {
+        const wasm = this.instantiateWasm.bind(this);
+        const locateFile = this.locateFile.bind(this);
+        return await (0, import_duckdb_eh.default)({
+          ...moduleOverrides,
+          instantiateWasm: wasm,
+          locateFile
+        });
+      } catch (error) {
+        this.logger.log({
+          timestamp: /* @__PURE__ */ new Date(),
+          level: 4 /* ERROR */,
+          origin: 3 /* BINDINGS */,
+          topic: 5 /* INSTANTIATE */,
+          event: 2 /* ERROR */,
+          value: "Failed to instantiate WASM: " + error
+        });
+        throw error;
+      }
     }
   };
 

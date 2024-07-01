@@ -9,4 +9,5 @@ export interface DuckDBModule extends EmscriptenModule {
     stackRestore: typeof stackRestore;
     ccall: typeof ccall;
     PThread: PThread;
+    instantiateWasm: (imports: Emscripten.WebAssemblyImports, successCallback: (module: WebAssembly.Module) => void) => Promise<Emscripten.WebAssemblyExports>;
 }

@@ -3,6 +3,7 @@ export interface PThread {
     runningWorkers: Worker[];
 }
 
+// @ts-ignore - We are trying to fix some thing using the below code
 export interface DuckDBModule extends EmscriptenModule {
     stackSave: typeof stackSave;
     stackAlloc: typeof stackAlloc;
@@ -10,4 +11,8 @@ export interface DuckDBModule extends EmscriptenModule {
 
     ccall: typeof ccall;
     PThread: PThread;
+    instantiateWasm: (
+        imports: Emscripten.WebAssemblyImports,
+        successCallback: (module: WebAssembly.Module) => void,
+    ) => Promise<Emscripten.WebAssemblyExports>;
 }

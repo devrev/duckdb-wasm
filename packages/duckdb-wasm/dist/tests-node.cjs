@@ -13596,6 +13596,7 @@ var DuckDBNodeBindings = class extends DuckDBBindingsBase {
   instantiateImpl(moduleOverrides) {
     return (0, import_duckdb_mvp.default)({
       ...moduleOverrides,
+      //@ts-ignore
       instantiateWasm: this.instantiateWasm.bind(this)
     });
   }
@@ -13611,6 +13612,7 @@ var DuckDB = class extends DuckDBNodeBindings {
   instantiateImpl(moduleOverrides) {
     return (0, import_duckdb_mvp2.default)({
       ...moduleOverrides,
+      //@ts-ignore
       instantiateWasm: this.instantiateWasm.bind(this),
       locateFile: this.locateFile.bind(this)
     });
@@ -13628,6 +13630,7 @@ var DuckDB2 = class extends DuckDBNodeBindings {
   instantiateImpl(moduleOverrides) {
     return (0, import_duckdb_eh.default)({
       ...moduleOverrides,
+      //@ts-ignore
       instantiateWasm: this.instantiateWasm.bind(this),
       locateFile: this.locateFile.bind(this)
     });

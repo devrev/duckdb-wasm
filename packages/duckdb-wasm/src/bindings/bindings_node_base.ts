@@ -44,7 +44,7 @@ export class DuckDBNodeBindings extends DuckDBBindingsBase {
     }
 
     /** Instantiate the wasm module */
-    protected instantiateWasm(
+    protected  instantiateWasm(
         // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
         imports: any,
         success: (instance: WebAssembly.Instance, module: WebAssembly.Module) => void,
@@ -65,6 +65,7 @@ export class DuckDBNodeBindings extends DuckDBBindingsBase {
     protected instantiateImpl(moduleOverrides: Partial<DuckDBModule>): Promise<DuckDBModule> {
         return DuckDBWasm({
             ...moduleOverrides,
+            //@ts-ignore
             instantiateWasm: this.instantiateWasm.bind(this),
         });
     }

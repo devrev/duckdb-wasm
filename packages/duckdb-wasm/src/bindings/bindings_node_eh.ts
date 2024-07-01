@@ -20,6 +20,7 @@ export class DuckDB extends DuckDBNodeBindings {
     protected instantiateImpl(moduleOverrides: Partial<DuckDBModule>): Promise<DuckDBModule> {
         return DuckDBWasm({
             ...moduleOverrides,
+            //@ts-ignore
             instantiateWasm: this.instantiateWasm.bind(this),
             locateFile: this.locateFile.bind(this),
         });
