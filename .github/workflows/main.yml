@@ -19,6 +19,7 @@ jobs:
                   node-version: 18.17
                   registry-url: https://npm.pkg.github.com/
                   scope: '@devrev'
+
             - run: npm install -g yarn
             - name: publish package
               env:
