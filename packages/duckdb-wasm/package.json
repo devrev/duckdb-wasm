@@ -1,6 +1,6 @@
 {
     "name": "@devrev/duckdb-wasm",
-    "version": "1.14.2",
+    "version": "1.14.3",
     "description": "DevRev fork of DuckDB powered by WebAssembly",
     "license": "MIT",
     "repository": {
