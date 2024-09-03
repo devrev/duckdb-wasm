@@ -5524,7 +5524,7 @@ var require_duckdb_mvp = __commonJS({
           }
           return scriptDirectory + path2;
         }
-        var read_, readAsync, readBinary;
+        var read_, readAsync, readBinary, setWindowTitle;
         if (ENVIRONMENT_IS_NODE) {
           var fs4 = require("fs");
           var nodePath = require("path");
@@ -5607,6 +5607,7 @@ var require_duckdb_mvp = __commonJS({
               xhr.send(null);
             };
           }
+          setWindowTitle = (title) => document.title = title;
         } else {
         }
         var out = Module["print"] || console.log.bind(console);
@@ -5622,6 +5623,7 @@ var require_duckdb_mvp = __commonJS({
         var wasmBinary;
         if (Module["wasmBinary"])
           wasmBinary = Module["wasmBinary"];
+        var noExitRuntime = Module["noExitRuntime"] || true;
         if (typeof WebAssembly != "object") {
           abort("no native wasm support detected");
         }
@@ -5645,11 +5647,16 @@ var require_duckdb_mvp = __commonJS({
           Module["HEAPF32"] = HEAPF32 = new Float32Array(b);
           Module["HEAPF64"] = HEAPF64 = new Float64Array(b);
         }
+        var wasmTable;
         var __ATPRERUN__ = [];
         var __ATINIT__ = [];
         var __ATMAIN__ = [];
         var __ATPOSTRUN__ = [];
         var runtimeInitialized = false;
+        var runtimeKeepaliveCounter = 0;
+        function keepRuntimeAlive() {
+          return noExitRuntime || runtimeKeepaliveCounter > 0;
+        }
         function preRun() {
           if (Module["preRun"]) {
             if (typeof Module["preRun"] == "function")
@@ -5690,14 +5697,16 @@ var require_duckdb_mvp = __commonJS({
         var runDependencyWatcher = null;
         var dependenciesFulfilled = null;
         function addRunDependency(id) {
-          var _a;
           runDependencies++;
-          (_a = Module["monitorRunDependencies"]) == null ? void 0 : _a.call(Module, runDependencies);
+          if (Module["monitorRunDependencies"]) {
+            Module["monitorRunDependencies"](runDependencies);
+          }
         }
         function removeRunDependency(id) {
-          var _a;
           runDependencies--;
-          (_a = Module["monitorRunDependencies"]) == null ? void 0 : _a.call(Module, runDependencies);
+          if (Module["monitorRunDependencies"]) {
+            Module["monitorRunDependencies"](runDependencies);
+          }
           if (runDependencies == 0) {
             if (runDependencyWatcher !== null) {
               clearInterval(runDependencyWatcher);
@@ -5711,8 +5720,9 @@ var require_duckdb_mvp = __commonJS({
           }
         }
         function abort(what) {
-          var _a;
-          (_a = Module["onAbort"]) == null ? void 0 : _a.call(Module, what);
+          if (Module["onAbort"]) {
+            Module["onAbort"](what);
+          }
           what = "Aborted(" + what + ")";
           err(what);
           ABORT = true;
@@ -5723,8 +5733,12 @@ var require_duckdb_mvp = __commonJS({
           throw e;
         }
         var dataURIPrefix = "data:application/octet-stream;base64,";
-        var isDataURI = (filename) => filename.startsWith(dataURIPrefix);
-        var isFileURI = (filename) => filename.startsWith("file://");
+        function isDataURI(filename) {
+          return filename.startsWith(dataURIPrefix);
+        }
+        function isFileURI(filename) {
+          return filename.startsWith("file://");
+        }
         var wasmBinaryFile;
         wasmBinaryFile = "./duckdb-mvp.wasm";
         if (!isDataURI(wasmBinaryFile)) {
@@ -5774,14 +5788,15 @@ var require_duckdb_mvp = __commonJS({
         function createWasm() {
           var info = { "a": wasmImports };
           function receiveInstance(instance, module3) {
-            wasmExports = instance.exports;
-            wasmExports = applySignatureConversions(wasmExports);
+            var exports2 = instance.exports;
+            exports2 = applySignatureConversions(exports2);
+            wasmExports = exports2;
             wasmMemory = wasmExports["yf"];
             updateMemoryViews();
             wasmTable = wasmExports["Bf"];
             addOnInit(wasmExports["zf"]);
             removeRunDependency("wasm-instantiate");
-            return wasmExports;
+            return exports2;
           }
           addRunDependency("wasm-instantiate");
           function receiveInstantiationResult(result) {
@@ -5810,7 +5825,6 @@ var require_duckdb_mvp = __commonJS({
             callbacks.shift()(Module);
           }
         };
-        var noExitRuntime = Module["noExitRuntime"] || true;
         var exceptionCaught = [];
         var uncaughtExceptionCount = 0;
         var convertI32PairToI53Checked = (lo, hi) => hi + 2097152 >>> 0 < 4194305 - !!lo ? (lo >>> 0) + hi * 4294967296 : NaN;
@@ -6019,7 +6033,7 @@ var require_duckdb_mvp = __commonJS({
           return ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead) : "";
         };
         var SYSCALLS = { varargs: void 0, get() {
-          var ret = HEAP32[+SYSCALLS.varargs >>> 2 >>> 0];
+          var ret = HEAP32[SYSCALLS.varargs >>> 2 >>> 0];
           SYSCALLS.varargs += 4;
           return ret;
         }, getp() {
@@ -6055,7 +6069,7 @@ var require_duckdb_mvp = __commonJS({
             if (stream.stream_ops.poll) {
               var timeoutInMillis = -1;
               if (timeout) {
-                var tv_sec = readfds ? HEAP32[timeout >>> 2 >>> 0] : 0, tv_usec = readfds ? HEAP32[timeout + 4 >>> 2 >>> 0] : 0;
+                var tv_sec = readfds ? HEAP32[timeout >>> 2 >>> 0] : 0, tv_usec = readfds ? HEAP32[timeout + 8 >>> 2 >>> 0] : 0;
                 timeoutInMillis = (tv_sec + tv_usec / 1e6) * 1e3;
               }
               flags = stream.stream_ops.poll(stream, timeoutInMillis);
@@ -6468,7 +6482,7 @@ var require_duckdb_mvp = __commonJS({
         function ___syscall_unlinkat(dirfd, path2, flags) {
           path2 >>>= 0;
         }
-        var nowIsMonotonic = 1;
+        var nowIsMonotonic = true;
         var __emscripten_get_now_is_monotonic = () => nowIsMonotonic;
         var _abort = () => {
           abort("");
@@ -6528,7 +6542,7 @@ var require_duckdb_mvp = __commonJS({
         }
         var _emscripten_get_now;
         _emscripten_get_now = () => performance.now();
-        function _emscripten_memcpy_js(dest, src, num) {
+        function _emscripten_memcpy_big(dest, src, num) {
           dest >>>= 0;
           src >>>= 0;
           num >>>= 0;
@@ -7079,13 +7093,11 @@ var require_duckdb_mvp = __commonJS({
           loc >>>= 0;
           return _strftime(s, maxsize, format, tm);
         }
-        var runtimeKeepaliveCounter = 0;
-        var keepRuntimeAlive = () => noExitRuntime || runtimeKeepaliveCounter > 0;
         var _proc_exit = (code) => {
-          var _a;
           EXITSTATUS = code;
           if (!keepRuntimeAlive()) {
-            (_a = Module["onExit"]) == null ? void 0 : _a.call(Module, code);
+            if (Module["onExit"])
+              Module["onExit"](code);
             ABORT = true;
           }
           quit_(code, new ExitStatus(code));
@@ -7101,7 +7113,6 @@ var require_duckdb_mvp = __commonJS({
           quit_(1, e);
         };
         var wasmTableMirror = [];
-        var wasmTable;
         var getWasmTableEntry = (funcPtr) => {
           var func = wasmTableMirror[funcPtr];
           if (!func) {
@@ -7165,7 +7176,7 @@ var require_duckdb_mvp = __commonJS({
           ret = onDone(ret);
           return ret;
         };
-        var wasmImports = { v: ___cxa_begin_catch, D: ___cxa_end_catch, a: ___cxa_find_matching_catch_2, k: ___cxa_find_matching_catch_3, B: ___cxa_find_matching_catch_4, O: ___cxa_find_matching_catch_5, Q: ___cxa_find_matching_catch_6, va: ___cxa_find_matching_catch_7, pa: ___cxa_rethrow, s: ___cxa_throw, E: ___cxa_uncaught_exceptions, c: ___resumeException, La: ___syscall__newselect, Pa: ___syscall_bind, Oa: ___syscall_connect, Ca: ___syscall_faccessat, P: ___syscall_fcntl64, Ba: ___syscall_fstat64, yb: ___syscall_ftruncate64, wa: ___syscall_getdents64, Ja: ___syscall_getpeername, Ka: ___syscall_getsockopt, ma: ___syscall_ioctl, ya: ___syscall_lstat64, xa: ___syscall_mkdirat, za: ___syscall_newfstatat, na: ___syscall_openat, Ma: ___syscall_recvfrom, uf: ___syscall_renameat, ea: ___syscall_rmdir, Na: ___syscall_sendto, ia: ___syscall_socket, Aa: ___syscall_stat64, fa: ___syscall_unlinkat, Sa: __emscripten_get_now_is_monotonic, aa: _abort, jf: _duckdb_web_fs_directory_create, kf: _duckdb_web_fs_directory_exists, gf: _duckdb_web_fs_directory_list_files, hf: _duckdb_web_fs_directory_remove, ta: _duckdb_web_fs_file_close, ef: _duckdb_web_fs_file_exists, cb: _duckdb_web_fs_file_get_last_modified_time, ff: _duckdb_web_fs_file_move, mf: _duckdb_web_fs_file_open, ba: _duckdb_web_fs_file_read, lf: _duckdb_web_fs_file_truncate, ua: _duckdb_web_fs_file_write, nf: _duckdb_web_fs_get_default_data_protocol, df: _duckdb_web_fs_glob, ra: _duckdb_web_test_platform_feature, of: _duckdb_web_udf_scalar_call, Ta: _emscripten_date_now, Ua: _emscripten_get_heap_max, sa: _emscripten_get_now, wf: _emscripten_memcpy_js, xf: _emscripten_resize_heap, Fb: _environ_get, Qb: _environ_sizes_get, Y: _fd_close, Ra: _fd_fdstat_get, Ab: _fd_pread, zb: _fd_pwrite, la: _fd_read, Ue: _fd_seek, vf: _fd_sync, ca: _fd_write, Qa: _getaddrinfo, tf: _getentropy, Ia: _getnameinfo, x: invoke_di, W: invoke_dii, da: invoke_diii, J: invoke_diiii, N: invoke_diiiiid, Wb: invoke_diijii, S: invoke_fi, qa: invoke_fiii, L: invoke_fiiii, Xb: invoke_fiijii, p: invoke_i, ja: invoke_id, rf: invoke_idd, _: invoke_idiii, ka: invoke_if, sf: invoke_iff, d: invoke_ii, U: invoke_iid, R: invoke_iidii, b: invoke_iii, M: invoke_iiid, gc: invoke_iiidj, g: invoke_iiii, Ea: invoke_iiiid, cc: invoke_iiiidjj, j: invoke_iiiii, oa: invoke_iiiiid, o: invoke_iiiiii, Da: invoke_iiiiiid, t: invoke_iiiiiii, u: invoke_iiiiiiii, H: invoke_iiiiiiiii, X: invoke_iiiiiiiiii, V: invoke_iiiiiiiiiii, q: invoke_iiiiiiiiiiii, y: invoke_iiiiiiiiiiiii, Fa: invoke_iiiiiiiiiiiiiiii, F: invoke_iiiiiiiiiiiiiiiii, r: invoke_iiiiiiiiiiiiiiiiii, _b: invoke_iiiiiiiiiiiij, oc: invoke_iiiiiiiiiiji, fc: invoke_iiiiiiiiijiiiiiii, se: invoke_iiiiiiiij, bc: invoke_iiiiiiiiji, Ad: invoke_iiiiiiij, hc: invoke_iiiiiiiji, ye: invoke_iiiiiiijii, zd: invoke_iiiiiiijj, bb: invoke_iiiiiiijji, te: invoke_iiiiiij, Dd: invoke_iiiiiiji, Xa: invoke_iiiiiijii, Xc: invoke_iiiiiijjiijjj, We: invoke_iiiiij, vd: invoke_iiiiiji, ze: invoke_iiiiijii, sc: invoke_iiiiijiii, tc: invoke_iiiiijij, Ve: invoke_iiiiijj, _a: invoke_iiiiijjj, Ya: invoke_iiiiijjji, qe: invoke_iiiij, wd: invoke_iiiiji, Bd: invoke_iiiijii, Cd: invoke_iiiijiii, Id: invoke_iiiijj, Yc: invoke_iiiijji, Zc: invoke_iiiijjii, ue: invoke_iiiijjiii, zc: invoke_iiiijjj, $e: invoke_iiij, De: invoke_iiiji, xe: invoke_iiijii, sd: invoke_iiijiii, ac: invoke_iiijiiiij, nb: invoke_iiijiiiijj, $b: invoke_iiijiiij, hb: invoke_iiijiiijj, yc: invoke_iiijiij, xb: invoke_iiijiiji, mb: invoke_iiijiijj, Ge: invoke_iiijij, af: invoke_iiijj, Hd: invoke_iiijji, Wc: invoke_iiijjii, Nb: invoke_iiijjiii, dc: invoke_iiijjiij, ec: invoke_iiijjiiji, _c: invoke_iiijjijjii, od: invoke_iiijjj, gb: invoke_iiijjji, Gc: invoke_iiijjjj, Ke: invoke_iij, Ie: invoke_iiji, Be: invoke_iijii, ub: invoke_iijiii, Ub: invoke_iijiiii, ib: invoke_iijiiijj, wb: invoke_iijiij, jb: invoke_iijiijj, nd: invoke_iijiji, ud: invoke_iijj, He: invoke_iijji, Tb: invoke_iijjii, Vb: invoke_iijjiii, Wa: invoke_iijjij, Cb: invoke_iijjijj, ee: invoke_iijjj, Za: invoke_iijjjii, ld: invoke_ij, $d: invoke_iji, Kc: invoke_ijii, Ec: invoke_ijji, we: invoke_ijjiii, Kb: invoke_ijjj, ve: invoke_j, Fd: invoke_jd, Ed: invoke_jf, Ze: invoke_ji, Ye: invoke_jii, pe: invoke_jiii, cf: invoke_jiiii, yd: invoke_jiiiii, rc: invoke_jiiiiii, kc: invoke_jiiiiiii, qc: invoke_jiiiiiijii, he: invoke_jiiiiijiiii, Bc: invoke_jiiiij, ce: invoke_jiiiiji, le: invoke_jiiiijii, fd: invoke_jiiij, ad: invoke_jiiiji, ke: invoke_jiiijii, ge: invoke_jiiijiii, ic: invoke_jiiijj, nc: invoke_jiiijjj, pd: invoke_jiij, cd: invoke_jiiji, je: invoke_jiijii, ie: invoke_jiijiii, jc: invoke_jiijj, pc: invoke_jiijjjii, td: invoke_jij, Rc: invoke_jijiii, $a: invoke_jijiiii, Oc: invoke_jijij, tb: invoke_jijj, Dc: invoke_jijji, Qc: invoke_jijjij, uc: invoke_jijjjjii, Jd: invoke_jj, Gb: invoke_jji, Mc: invoke_jjiji, Hc: invoke_jjj, Lc: invoke_jjjd, Hb: invoke_jjjii, Ib: invoke_jjjji, l: invoke_v, Ga: invoke_vdii, Ha: invoke_vfii, h: invoke_vi, z: invoke_vid, ga: invoke_viddddi, G: invoke_vif, e: invoke_vii, Z: invoke_viid, T: invoke_viidii, f: invoke_viii, i: invoke_viiii, qf: invoke_viiiidiiii, n: invoke_viiiii, m: invoke_viiiiii, ha: invoke_viiiiiidiii, A: invoke_viiiiiii, C: invoke_viiiiiiii, I: invoke_viiiiiiiii, K: invoke_viiiiiiiiii, pf: invoke_viiiiiiiiiii, $: invoke_viiiiiiiiiiiiiii, Oe: invoke_viiiiiiijjjji, Re: invoke_viiiiiij, xc: invoke_viiiiiiji, Pe: invoke_viiiiiijii, Qd: invoke_viiiiiijiij, Pd: invoke_viiiiiijj, Ld: invoke_viiiiij, $c: invoke_viiiiiji, Lb: invoke_viiiiijii, Ic: invoke_viiiiijiii, fe: invoke_viiiiijiiii, vb: invoke_viiiiijj, Qe: invoke_viiiiijjii, qb: invoke_viiiiijjji, Me: invoke_viiiij, me: invoke_viiiiji, vc: invoke_viiiijii, wc: invoke_viiiijiii, Db: invoke_viiiijiiii, Eb: invoke_viiiijiiiii, md: invoke_viiiijiiiiiiii, Od: invoke_viiiijijji, Se: invoke_viiiijj, Zb: invoke_viiiijji, Nd: invoke_viiiijjij, Je: invoke_viiij, Ce: invoke_viiiji, Ae: invoke_viiijii, Ac: invoke_viiijiii, Md: invoke_viiijiiii, Ud: invoke_viiijiiiijjj, Kd: invoke_viiijiiijii, qd: invoke_viiijij, ab: invoke_viiijiji, rd: invoke_viiijijij, mc: invoke_viiijijj, lb: invoke_viiijijjj, _e: invoke_viiijj, hd: invoke_viiijji, xd: invoke_viiijjii, Sd: invoke_viiijjiij, Yd: invoke_viiijjij, ae: invoke_viiijjj, Fc: invoke_viiijjjj, fb: invoke_viiijjjji, Ne: invoke_viij, Fe: invoke_viiji, Xe: invoke_viijii, Xd: invoke_viijiii, Ob: invoke_viijiiii, ne: invoke_viijiiiii, Jb: invoke_viijiiiiii, Vd: invoke_viijiiiij, Tc: invoke_viijiiij, Pc: invoke_viijiij, bd: invoke_viijiiji, pb: invoke_viijiijj, oe: invoke_viijij, eb: invoke_viijiji, Rd: invoke_viijijiiii, Td: invoke_viijijiiiijjj, rb: invoke_viijijj, bf: invoke_viijj, Ee: invoke_viijji, lc: invoke_viijjii, de: invoke_viijjj, _d: invoke_viijjji, Te: invoke_vij, Le: invoke_viji, Vc: invoke_vijii, Sb: invoke_vijiii, Pb: invoke_vijiiii, Mb: invoke_vijiiiii, Rb: invoke_vijiiiiii, Sc: invoke_vijiiiji, ob: invoke_vijiij, Nc: invoke_vijij, jd: invoke_vijiji, Gd: invoke_vijijiiiijjj, be: invoke_vijijj, Wd: invoke_vijijjiij, sb: invoke_vijijjji, Zd: invoke_vijj, Cc: invoke_vijji, Va: invoke_vijjii, db: invoke_vijjiii, id: invoke_vijjij, Uc: invoke_vijjj, ed: invoke_vijjji, Bb: invoke_vj, Jc: invoke_vjii, re: invoke_vjiii, kd: invoke_vjiiii, Yb: invoke_vjiiiji, gd: invoke_vjjii, dd: invoke_vjjijij, w: _llvm_eh_typeid_for, kb: _strftime_l };
+        var wasmImports = { v: ___cxa_begin_catch, D: ___cxa_end_catch, a: ___cxa_find_matching_catch_2, k: ___cxa_find_matching_catch_3, B: ___cxa_find_matching_catch_4, M: ___cxa_find_matching_catch_5, Q: ___cxa_find_matching_catch_6, wa: ___cxa_find_matching_catch_7, pa: ___cxa_rethrow, s: ___cxa_throw, E: ___cxa_uncaught_exceptions, c: ___resumeException, Ma: ___syscall__newselect, Qa: ___syscall_bind, Pa: ___syscall_connect, Da: ___syscall_faccessat, P: ___syscall_fcntl64, Ca: ___syscall_fstat64, zb: ___syscall_ftruncate64, xa: ___syscall_getdents64, Ka: ___syscall_getpeername, La: ___syscall_getsockopt, ma: ___syscall_ioctl, za: ___syscall_lstat64, ya: ___syscall_mkdirat, Aa: ___syscall_newfstatat, na: ___syscall_openat, Na: ___syscall_recvfrom, vf: ___syscall_renameat, ea: ___syscall_rmdir, Oa: ___syscall_sendto, ia: ___syscall_socket, Ba: ___syscall_stat64, fa: ___syscall_unlinkat, Ta: __emscripten_get_now_is_monotonic, ba: _abort, lf: _duckdb_web_fs_directory_create, mf: _duckdb_web_fs_directory_exists, jf: _duckdb_web_fs_directory_list_files, kf: _duckdb_web_fs_directory_remove, ta: _duckdb_web_fs_file_close, gf: _duckdb_web_fs_file_exists, db: _duckdb_web_fs_file_get_last_modified_time, hf: _duckdb_web_fs_file_move, of: _duckdb_web_fs_file_open, aa: _duckdb_web_fs_file_read, nf: _duckdb_web_fs_file_truncate, ua: _duckdb_web_fs_file_write, pf: _duckdb_web_fs_get_default_data_protocol, ff: _duckdb_web_fs_glob, ra: _duckdb_web_test_platform_feature, qf: _duckdb_web_udf_scalar_call, Ua: _emscripten_date_now, Va: _emscripten_get_heap_max, sa: _emscripten_get_now, Kd: _emscripten_memcpy_big, xf: _emscripten_resize_heap, Gb: _environ_get, Rb: _environ_sizes_get, Z: _fd_close, Sa: _fd_fdstat_get, Bb: _fd_pread, Ab: _fd_pwrite, la: _fd_read, Ve: _fd_seek, wf: _fd_sync, ca: _fd_write, Ra: _getaddrinfo, uf: _getentropy, Ja: _getnameinfo, x: invoke_di, X: invoke_dii, da: invoke_diii, J: invoke_diiii, O: invoke_diiiiid, Xb: invoke_diijii, S: invoke_fi, qa: invoke_fiii, L: invoke_fiiii, Yb: invoke_fiijii, p: invoke_i, ja: invoke_id, sf: invoke_idd, _: invoke_idiii, ka: invoke_if, tf: invoke_iff, d: invoke_ii, V: invoke_iid, R: invoke_iidii, b: invoke_iii, U: invoke_iiid, hc: invoke_iiidj, g: invoke_iiii, Fa: invoke_iiiid, dc: invoke_iiiidjj, j: invoke_iiiii, oa: invoke_iiiiid, o: invoke_iiiiii, Ea: invoke_iiiiiid, t: invoke_iiiiiii, u: invoke_iiiiiiii, H: invoke_iiiiiiiii, Y: invoke_iiiiiiiiii, W: invoke_iiiiiiiiiii, q: invoke_iiiiiiiiiiii, y: invoke_iiiiiiiiiiiii, Ga: invoke_iiiiiiiiiiiiiiii, F: invoke_iiiiiiiiiiiiiiiii, r: invoke_iiiiiiiiiiiiiiiiii, $b: invoke_iiiiiiiiiiiij, pc: invoke_iiiiiiiiiiji, gc: invoke_iiiiiiiiijiiiiiii, ue: invoke_iiiiiiiij, cc: invoke_iiiiiiiiji, Bd: invoke_iiiiiiij, ic: invoke_iiiiiiiji, Ae: invoke_iiiiiiijii, Ad: invoke_iiiiiiijj, cb: invoke_iiiiiiijji, ve: invoke_iiiiiij, Ed: invoke_iiiiiiji, Ya: invoke_iiiiiijii, Yc: invoke_iiiiiijjiijjj, Xe: invoke_iiiiij, wd: invoke_iiiiiji, Be: invoke_iiiiijii, tc: invoke_iiiiijiii, uc: invoke_iiiiijij, We: invoke_iiiiijj, $a: invoke_iiiiijjj, Za: invoke_iiiiijjji, se: invoke_iiiij, xd: invoke_iiiiji, Cd: invoke_iiiijii, Dd: invoke_iiiijiii, Jd: invoke_iiiijj, Zc: invoke_iiiijji, _c: invoke_iiiijjii, we: invoke_iiiijjiii, Ac: invoke_iiiijjj, af: invoke_iiij, Fe: invoke_iiiji, ze: invoke_iiijii, td: invoke_iiijiii, bc: invoke_iiijiiiij, ob: invoke_iiijiiiijj, ac: invoke_iiijiiij, ib: invoke_iiijiiijj, zc: invoke_iiijiij, yb: invoke_iiijiiji, nb: invoke_iiijiijj, Ie: invoke_iiijij, bf: invoke_iiijj, Id: invoke_iiijji, Xc: invoke_iiijjii, Ob: invoke_iiijjiii, fc: invoke_iiijjiij, ec: invoke_iiijjiiji, $c: invoke_iiijjijjii, pd: invoke_iiijjj, hb: invoke_iiijjji, Hc: invoke_iiijjjj, Me: invoke_iij, Ke: invoke_iiji, De: invoke_iijii, vb: invoke_iijiii, Vb: invoke_iijiiii, jb: invoke_iijiiijj, xb: invoke_iijiij, kb: invoke_iijiijj, od: invoke_iijiji, vd: invoke_iijj, Je: invoke_iijji, Ub: invoke_iijjii, Wb: invoke_iijjiii, Xa: invoke_iijjij, Db: invoke_iijjijj, ge: invoke_iijjj, _a: invoke_iijjjii, md: invoke_ij, be: invoke_iji, Lc: invoke_ijii, Fc: invoke_ijji, ye: invoke_ijjiii, Lb: invoke_ijjj, xe: invoke_j, Gd: invoke_jd, Fd: invoke_jf, _e: invoke_ji, Ze: invoke_jii, re: invoke_jiii, ef: invoke_jiiii, zd: invoke_jiiiii, sc: invoke_jiiiiii, lc: invoke_jiiiiiii, rc: invoke_jiiiiiijii, je: invoke_jiiiiijiiii, Cc: invoke_jiiiij, ee: invoke_jiiiiji, ne: invoke_jiiiijii, gd: invoke_jiiij, bd: invoke_jiiiji, me: invoke_jiiijii, ie: invoke_jiiijiii, jc: invoke_jiiijj, oc: invoke_jiiijjj, qd: invoke_jiij, dd: invoke_jiiji, le: invoke_jiijii, ke: invoke_jiijiii, kc: invoke_jiijj, qc: invoke_jiijjjii, ud: invoke_jij, Sc: invoke_jijiii, ab: invoke_jijiiii, Pc: invoke_jijij, ub: invoke_jijj, Ec: invoke_jijji, Rc: invoke_jijjij, vc: invoke_jijjjjii, Ld: invoke_jj, Hb: invoke_jji, Nc: invoke_jjiji, Ic: invoke_jjj, Mc: invoke_jjjd, Ib: invoke_jjjii, Jb: invoke_jjjji, l: invoke_v, Ha: invoke_vdii, Ia: invoke_vfii, h: invoke_vi, z: invoke_vid, ga: invoke_viddddi, G: invoke_vif, e: invoke_vii, N: invoke_viid, T: invoke_viidii, f: invoke_viii, i: invoke_viiii, va: invoke_viiiidiiii, n: invoke_viiiii, m: invoke_viiiiii, ha: invoke_viiiiiidiii, A: invoke_viiiiiii, C: invoke_viiiiiiii, I: invoke_viiiiiiiii, K: invoke_viiiiiiiiii, rf: invoke_viiiiiiiiiii, $: invoke_viiiiiiiiiiiiiii, Pe: invoke_viiiiiiijjjji, Se: invoke_viiiiiij, yc: invoke_viiiiiiji, Qe: invoke_viiiiiijii, Sd: invoke_viiiiiijiij, Rd: invoke_viiiiiijj, Nd: invoke_viiiiij, ad: invoke_viiiiiji, Mb: invoke_viiiiijii, Jc: invoke_viiiiijiii, he: invoke_viiiiijiiii, wb: invoke_viiiiijj, Re: invoke_viiiiijjii, rb: invoke_viiiiijjji, Oe: invoke_viiiij, oe: invoke_viiiiji, wc: invoke_viiiijii, xc: invoke_viiiijiii, Eb: invoke_viiiijiiii, Fb: invoke_viiiijiiiii, nd: invoke_viiiijiiiiiiii, Qd: invoke_viiiijijji, Te: invoke_viiiijj, _b: invoke_viiiijji, Pd: invoke_viiiijjij, Le: invoke_viiij, Ee: invoke_viiiji, Ce: invoke_viiijii, Bc: invoke_viiijiii, Od: invoke_viiijiiii, Wd: invoke_viiijiiiijjj, Md: invoke_viiijiiijii, rd: invoke_viiijij, bb: invoke_viiijiji, sd: invoke_viiijijij, nc: invoke_viiijijj, mb: invoke_viiijijjj, $e: invoke_viiijj, id: invoke_viiijji, yd: invoke_viiijjii, Ud: invoke_viiijjiij, _d: invoke_viiijjij, ce: invoke_viiijjj, Gc: invoke_viiijjjj, gb: invoke_viiijjjji, cf: invoke_viij, He: invoke_viiji, Ye: invoke_viijii, Zd: invoke_viijiii, Pb: invoke_viijiiii, pe: invoke_viijiiiii, Kb: invoke_viijiiiiii, Xd: invoke_viijiiiij, Uc: invoke_viijiiij, Qc: invoke_viijiij, cd: invoke_viijiiji, qb: invoke_viijiijj, qe: invoke_viijij, fb: invoke_viijiji, Td: invoke_viijijiiii, Vd: invoke_viijijiiiijjj, sb: invoke_viijijj, df: invoke_viijj, Ge: invoke_viijji, mc: invoke_viijjii, fe: invoke_viijjj, ae: invoke_viijjji, Ue: invoke_vij, Ne: invoke_viji, Wc: invoke_vijii, Tb: invoke_vijiii, Qb: invoke_vijiiii, Nb: invoke_vijiiiii, Sb: invoke_vijiiiiii, Tc: invoke_vijiiiji, pb: invoke_vijiij, Oc: invoke_vijij, kd: invoke_vijiji, Hd: invoke_vijijiiiijjj, de: invoke_vijijj, Yd: invoke_vijijjiij, tb: invoke_vijijjji, $d: invoke_vijj, Dc: invoke_vijji, Wa: invoke_vijjii, eb: invoke_vijjiii, jd: invoke_vijjij, Vc: invoke_vijjj, fd: invoke_vijjji, Cb: invoke_vj, Kc: invoke_vjii, te: invoke_vjiii, ld: invoke_vjiiii, Zb: invoke_vjiiiji, hd: invoke_vjjii, ed: invoke_vjjijij, w: _llvm_eh_typeid_for, lb: _strftime_l };
         var wasmExports = createWasm();
         var ___wasm_call_ctors = () => (___wasm_call_ctors = wasmExports["zf"])();
         var _main = Module["_main"] = (a0, a1) => (_main = Module["_main"] = wasmExports["Af"])(a0, a1);
@@ -7374,8 +7385,8 @@ var require_duckdb_mvp = __commonJS({
         var dynCall_iiidj = Module["dynCall_iiidj"] = (a0, a1, a2, a3, a4, a5) => (dynCall_iiidj = Module["dynCall_iiidj"] = wasmExports["mj"])(a0, a1, a2, a3, a4, a5);
         var dynCall_iiiiiiiji = Module["dynCall_iiiiiiiji"] = (a0, a1, a2, a3, a4, a5, a6, a7, a8, a9) => (dynCall_iiiiiiiji = Module["dynCall_iiiiiiiji"] = wasmExports["nj"])(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9);
         var dynCall_iiiiiiiiijiiiiiii = Module["dynCall_iiiiiiiiijiiiiiii"] = (a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17) => (dynCall_iiiiiiiiijiiiiiii = Module["dynCall_iiiiiiiiijiiiiiii"] = wasmExports["oj"])(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17);
-        var dynCall_iiijjiiji = Module["dynCall_iiijjiiji"] = (a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11) => (dynCall_iiijjiiji = Module["dynCall_iiijjiiji"] = wasmExports["pj"])(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11);
-        var dynCall_iiijjiij = Module["dynCall_iiijjiij"] = (a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10) => (dynCall_iiijjiij = Module["dynCall_iiijjiij"] = wasmExports["qj"])(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10);
+        var dynCall_iiijjiij = Module["dynCall_iiijjiij"] = (a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10) => (dynCall_iiijjiij = Module["dynCall_iiijjiij"] = wasmExports["pj"])(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10);
+        var dynCall_iiijjiiji = Module["dynCall_iiijjiiji"] = (a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11) => (dynCall_iiijjiiji = Module["dynCall_iiijjiiji"] = wasmExports["qj"])(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11);
         var dynCall_iiiidjj = Module["dynCall_iiiidjj"] = (a0, a1, a2, a3, a4, a5, a6, a7, a8) => (dynCall_iiiidjj = Module["dynCall_iiiidjj"] = wasmExports["rj"])(a0, a1, a2, a3, a4, a5, a6, a7, a8);
         var dynCall_iiiiiiiiji = Module["dynCall_iiiiiiiiji"] = (a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10) => (dynCall_iiiiiiiiji = Module["dynCall_iiiiiiiiji"] = wasmExports["sj"])(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10);
         var dynCall_iiijiiiij = Module["dynCall_iiijiiiij"] = (a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10) => (dynCall_iiijiiiij = Module["dynCall_iiijiiiij"] = wasmExports["tj"])(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10);
@@ -7441,6 +7452,17 @@ var require_duckdb_mvp = __commonJS({
         var dynCall_iiiiiijii = Module["dynCall_iiiiiijii"] = (a0, a1, a2, a3, a4, a5, a6, a7, a8, a9) => (dynCall_iiiiiijii = Module["dynCall_iiiiiijii"] = wasmExports["zk"])(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9);
         var dynCall_iijjij = Module["dynCall_iijjij"] = (a0, a1, a2, a3, a4, a5, a6, a7, a8) => (dynCall_iijjij = Module["dynCall_iijjij"] = wasmExports["Ak"])(a0, a1, a2, a3, a4, a5, a6, a7, a8);
         var dynCall_vijjii = Module["dynCall_vijjii"] = (a0, a1, a2, a3, a4, a5, a6, a7) => (dynCall_vijjii = Module["dynCall_vijjii"] = wasmExports["Bk"])(a0, a1, a2, a3, a4, a5, a6, a7);
+        function invoke_ii(index, a1) {
+          var sp = stackSave();
+          try {
+            return getWasmTableEntry(index)(a1);
+          } catch (e) {
+            stackRestore(sp);
+            if (e !== e + 0)
+              throw e;
+            _setThrew(1, 0);
+          }
+        }
         function invoke_v(index) {
           var sp = stackSave();
           try {
@@ -7456,17 +7478,6 @@ var require_duckdb_mvp = __commonJS({
           var sp = stackSave();
           try {
             getWasmTableEntry(index)(a1, a2);
-          } catch (e) {
-            stackRestore(sp);
-            if (e !== e + 0)
-              throw e;
-            _setThrew(1, 0);
-          }
-        }
-        function invoke_ii(index, a1) {
-          var sp = stackSave();
-          try {
-            return getWasmTableEntry(index)(a1);
           } catch (e) {
             stackRestore(sp);
             if (e !== e + 0)
@@ -8090,6 +8101,17 @@ var require_duckdb_mvp = __commonJS({
             _setThrew(1, 0);
           }
         }
+        function invoke_viij(index, a1, a2, a3, a4) {
+          var sp = stackSave();
+          try {
+            dynCall_viij(index, a1, a2, a3, a4);
+          } catch (e) {
+            stackRestore(sp);
+            if (e !== e + 0)
+              throw e;
+            _setThrew(1, 0);
+          }
+        }
         function invoke_iiijj(index, a1, a2, a3, a4, a5, a6) {
           var sp = stackSave();
           try {
@@ -8237,17 +8259,6 @@ var require_duckdb_mvp = __commonJS({
           var sp = stackSave();
           try {
             dynCall_viiiiiiijjjji(index, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16);
-          } catch (e) {
-            stackRestore(sp);
-            if (e !== e + 0)
-              throw e;
-            _setThrew(1, 0);
-          }
-        }
-        function invoke_viij(index, a1, a2, a3, a4) {
-          var sp = stackSave();
-          try {
-            dynCall_viij(index, a1, a2, a3, a4);
           } catch (e) {
             stackRestore(sp);
             if (e !== e + 0)
@@ -9817,10 +9828,10 @@ var require_duckdb_mvp = __commonJS({
             _setThrew(1, 0);
           }
         }
-        function invoke_iiijjiiji(index, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11) {
+        function invoke_iiijjiij(index, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10) {
           var sp = stackSave();
           try {
-            return dynCall_iiijjiiji(index, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11);
+            return dynCall_iiijjiij(index, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10);
           } catch (e) {
             stackRestore(sp);
             if (e !== e + 0)
@@ -9828,10 +9839,10 @@ var require_duckdb_mvp = __commonJS({
             _setThrew(1, 0);
           }
         }
-        function invoke_iiijjiij(index, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10) {
+        function invoke_iiijjiiji(index, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11) {
           var sp = stackSave();
           try {
-            return dynCall_iiijjiij(index, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10);
+            return dynCall_iiijjiiji(index, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11);
           } catch (e) {
             stackRestore(sp);
             if (e !== e + 0)
@@ -10587,7 +10598,7 @@ var require_duckdb_eh = __commonJS({
           }
           return scriptDirectory + path2;
         }
-        var read_, readAsync, readBinary;
+        var read_, readAsync, readBinary, setWindowTitle;
         if (ENVIRONMENT_IS_NODE) {
           var fs4 = require("fs");
           var nodePath = require("path");
@@ -10670,6 +10681,7 @@ var require_duckdb_eh = __commonJS({
               xhr.send(null);
             };
           }
+          setWindowTitle = (title) => document.title = title;
         } else {
         }
         var out = Module["print"] || console.log.bind(console);
@@ -10685,6 +10697,7 @@ var require_duckdb_eh = __commonJS({
         var wasmBinary;
         if (Module["wasmBinary"])
           wasmBinary = Module["wasmBinary"];
+        var noExitRuntime = Module["noExitRuntime"] || true;
         if (typeof WebAssembly != "object") {
           abort("no native wasm support detected");
         }
@@ -10708,11 +10721,16 @@ var require_duckdb_eh = __commonJS({
           Module["HEAPF32"] = HEAPF32 = new Float32Array(b);
           Module["HEAPF64"] = HEAPF64 = new Float64Array(b);
         }
+        var wasmTable;
         var __ATPRERUN__ = [];
         var __ATINIT__ = [];
         var __ATMAIN__ = [];
         var __ATPOSTRUN__ = [];
         var runtimeInitialized = false;
+        var runtimeKeepaliveCounter = 0;
+        function keepRuntimeAlive() {
+          return noExitRuntime || runtimeKeepaliveCounter > 0;
+        }
         function preRun() {
           if (Module["preRun"]) {
             if (typeof Module["preRun"] == "function")
@@ -10753,14 +10771,16 @@ var require_duckdb_eh = __commonJS({
         var runDependencyWatcher = null;
         var dependenciesFulfilled = null;
         function addRunDependency(id) {
-          var _a;
           runDependencies++;
-          (_a = Module["monitorRunDependencies"]) == null ? void 0 : _a.call(Module, runDependencies);
+          if (Module["monitorRunDependencies"]) {
+            Module["monitorRunDependencies"](runDependencies);
+          }
         }
         function removeRunDependency(id) {
-          var _a;
           runDependencies--;
-          (_a = Module["monitorRunDependencies"]) == null ? void 0 : _a.call(Module, runDependencies);
+          if (Module["monitorRunDependencies"]) {
+            Module["monitorRunDependencies"](runDependencies);
+          }
           if (runDependencies == 0) {
             if (runDependencyWatcher !== null) {
               clearInterval(runDependencyWatcher);
@@ -10774,8 +10794,9 @@ var require_duckdb_eh = __commonJS({
           }
         }
         function abort(what) {
-          var _a;
-          (_a = Module["onAbort"]) == null ? void 0 : _a.call(Module, what);
+          if (Module["onAbort"]) {
+            Module["onAbort"](what);
+          }
           what = "Aborted(" + what + ")";
           err(what);
           ABORT = true;
@@ -10789,8 +10810,12 @@ var require_duckdb_eh = __commonJS({
           throw e;
         }
         var dataURIPrefix = "data:application/octet-stream;base64,";
-        var isDataURI = (filename) => filename.startsWith(dataURIPrefix);
-        var isFileURI = (filename) => filename.startsWith("file://");
+        function isDataURI(filename) {
+          return filename.startsWith(dataURIPrefix);
+        }
+        function isFileURI(filename) {
+          return filename.startsWith("file://");
+        }
         var wasmBinaryFile;
         wasmBinaryFile = "./duckdb-eh.wasm";
         if (!isDataURI(wasmBinaryFile)) {
@@ -10840,13 +10865,15 @@ var require_duckdb_eh = __commonJS({
         function createWasm() {
           var info = { "a": wasmImports };
           function receiveInstance(instance, module3) {
-            wasmExports = instance.exports;
-            wasmExports = applySignatureConversions(wasmExports);
+            var exports2 = instance.exports;
+            exports2 = applySignatureConversions(exports2);
+            wasmExports = exports2;
             wasmMemory = wasmExports["fa"];
             updateMemoryViews();
+            wasmTable = wasmExports["ia"];
             addOnInit(wasmExports["ga"]);
             removeRunDependency("wasm-instantiate");
-            return wasmExports;
+            return exports2;
           }
           addRunDependency("wasm-instantiate");
           function receiveInstantiationResult(result) {
@@ -10875,7 +10902,6 @@ var require_duckdb_eh = __commonJS({
             callbacks.shift()(Module);
           }
         };
-        var noExitRuntime = Module["noExitRuntime"] || true;
         var UTF8Decoder = typeof TextDecoder != "undefined" ? new TextDecoder("utf8") : void 0;
         var UTF8ArrayToString = (heapOrArray, idx, maxBytesToRead) => {
           idx >>>= 0;
@@ -10918,7 +10944,7 @@ var require_duckdb_eh = __commonJS({
           return ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead) : "";
         };
         var SYSCALLS = { varargs: void 0, get() {
-          var ret = HEAP32[+SYSCALLS.varargs >>> 2 >>> 0];
+          var ret = HEAP32[SYSCALLS.varargs >>> 2 >>> 0];
           SYSCALLS.varargs += 4;
           return ret;
         }, getp() {
@@ -10955,7 +10981,7 @@ var require_duckdb_eh = __commonJS({
             if (stream.stream_ops.poll) {
               var timeoutInMillis = -1;
               if (timeout) {
-                var tv_sec = readfds ? HEAP32[timeout >>> 2 >>> 0] : 0, tv_usec = readfds ? HEAP32[timeout + 4 >>> 2 >>> 0] : 0;
+                var tv_sec = readfds ? HEAP32[timeout >>> 2 >>> 0] : 0, tv_usec = readfds ? HEAP32[timeout + 8 >>> 2 >>> 0] : 0;
                 timeoutInMillis = (tv_sec + tv_usec / 1e6) * 1e3;
               }
               flags = stream.stream_ops.poll(stream, timeoutInMillis);
@@ -11368,7 +11394,7 @@ var require_duckdb_eh = __commonJS({
         function ___syscall_unlinkat(dirfd, path2, flags) {
           path2 >>>= 0;
         }
-        var nowIsMonotonic = 1;
+        var nowIsMonotonic = true;
         var __emscripten_get_now_is_monotonic = () => nowIsMonotonic;
         var _abort = () => {
           abort("");
@@ -11428,7 +11454,7 @@ var require_duckdb_eh = __commonJS({
         }
         var _emscripten_get_now;
         _emscripten_get_now = () => performance.now();
-        function _emscripten_memcpy_js(dest, src, num) {
+        function _emscripten_memcpy_big(dest, src, num) {
           dest >>>= 0;
           src >>>= 0;
           num >>>= 0;
@@ -11975,13 +12001,11 @@ var require_duckdb_eh = __commonJS({
           loc >>>= 0;
           return _strftime(s, maxsize, format, tm);
         }
-        var runtimeKeepaliveCounter = 0;
-        var keepRuntimeAlive = () => noExitRuntime || runtimeKeepaliveCounter > 0;
         var _proc_exit = (code) => {
-          var _a;
           EXITSTATUS = code;
           if (!keepRuntimeAlive()) {
-            (_a = Module["onExit"]) == null ? void 0 : _a.call(Module, code);
+            if (Module["onExit"])
+              Module["onExit"](code);
             ABORT = true;
           }
           quit_(code, new ExitStatus(code));
@@ -12050,7 +12074,7 @@ var require_duckdb_eh = __commonJS({
           ret = onDone(ret);
           return ret;
         };
-        var wasmImports = { Z: ___syscall__newselect, ba: ___syscall_bind, aa: ___syscall_connect, V: ___syscall_faccessat, a: ___syscall_fcntl64, U: ___syscall_fstat64, v: ___syscall_ftruncate64, P: ___syscall_getdents64, X: ___syscall_getpeername, Y: ___syscall_getsockopt, o: ___syscall_ioctl, R: ___syscall_lstat64, Q: ___syscall_mkdirat, S: ___syscall_newfstatat, p: ___syscall_openat, _: ___syscall_recvfrom, N: ___syscall_renameat, j: ___syscall_rmdir, $: ___syscall_sendto, l: ___syscall_socket, T: ___syscall_stat64, k: ___syscall_unlinkat, q: __emscripten_get_now_is_monotonic, d: _abort, F: _duckdb_web_fs_directory_create, G: _duckdb_web_fs_directory_exists, D: _duckdb_web_fs_directory_list_files, E: _duckdb_web_fs_directory_remove, h: _duckdb_web_fs_file_close, A: _duckdb_web_fs_file_exists, u: _duckdb_web_fs_file_get_last_modified_time, B: _duckdb_web_fs_file_move, I: _duckdb_web_fs_file_open, e: _duckdb_web_fs_file_read, H: _duckdb_web_fs_file_truncate, i: _duckdb_web_fs_file_write, J: _duckdb_web_fs_get_default_data_protocol, z: _duckdb_web_fs_glob, g: _duckdb_web_test_platform_feature, L: _duckdb_web_udf_scalar_call, r: _emscripten_date_now, s: _emscripten_get_heap_max, c: _emscripten_get_now, da: _emscripten_memcpy_js, ea: _emscripten_resize_heap, C: _environ_get, K: _environ_sizes_get, b: _fd_close, ca: _fd_fdstat_get, x: _fd_pread, w: _fd_pwrite, n: _fd_read, y: _fd_seek, O: _fd_sync, f: _fd_write, m: _getaddrinfo, M: _getentropy, W: _getnameinfo, t: _strftime_l };
+        var wasmImports = { Z: ___syscall__newselect, ba: ___syscall_bind, aa: ___syscall_connect, V: ___syscall_faccessat, a: ___syscall_fcntl64, U: ___syscall_fstat64, v: ___syscall_ftruncate64, P: ___syscall_getdents64, X: ___syscall_getpeername, Y: ___syscall_getsockopt, o: ___syscall_ioctl, R: ___syscall_lstat64, Q: ___syscall_mkdirat, S: ___syscall_newfstatat, p: ___syscall_openat, _: ___syscall_recvfrom, N: ___syscall_renameat, j: ___syscall_rmdir, $: ___syscall_sendto, l: ___syscall_socket, T: ___syscall_stat64, k: ___syscall_unlinkat, q: __emscripten_get_now_is_monotonic, d: _abort, F: _duckdb_web_fs_directory_create, G: _duckdb_web_fs_directory_exists, D: _duckdb_web_fs_directory_list_files, E: _duckdb_web_fs_directory_remove, h: _duckdb_web_fs_file_close, A: _duckdb_web_fs_file_exists, u: _duckdb_web_fs_file_get_last_modified_time, B: _duckdb_web_fs_file_move, I: _duckdb_web_fs_file_open, e: _duckdb_web_fs_file_read, H: _duckdb_web_fs_file_truncate, i: _duckdb_web_fs_file_write, J: _duckdb_web_fs_get_default_data_protocol, z: _duckdb_web_fs_glob, g: _duckdb_web_test_platform_feature, L: _duckdb_web_udf_scalar_call, r: _emscripten_date_now, s: _emscripten_get_heap_max, c: _emscripten_get_now, da: _emscripten_memcpy_big, ea: _emscripten_resize_heap, C: _environ_get, K: _environ_sizes_get, b: _fd_close, ca: _fd_fdstat_get, x: _fd_pread, w: _fd_pwrite, n: _fd_read, y: _fd_seek, O: _fd_sync, f: _fd_write, m: _getaddrinfo, M: _getentropy, W: _getnameinfo, t: _strftime_l };
         var wasmExports = createWasm();
         var ___wasm_call_ctors = () => (___wasm_call_ctors = wasmExports["ga"])();
         var _main = Module["_main"] = (a0, a1) => (_main = Module["_main"] = wasmExports["ha"])(a0, a1);
