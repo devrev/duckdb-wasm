@@ -1,6 +1,6 @@
 {
     "name": "@devrev/duckdb-wasm",
-    "version": "1.14.1",
+    "version": "1.14.2",
     "description": "DevRev fork of DuckDB powered by WebAssembly",
     "license": "MIT",
     "repository": {
@@ -8,7 +8,7 @@
         "url": "git+https://github.com/devrev/duckdb-wasm.git"
     },
     "publishConfig": {
-        "registry": "https://npm.pkg.github.com"
+        "registry": "https://registry.npmjs.org"
     },
     "author": "devrev",
     "keywords": [
