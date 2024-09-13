@@ -25,6 +25,7 @@ export interface DuckDBFilesystemConfig {
     /**
      * Allow falling back to full HTTP reads if the server does not support range requests.
      */
+    reliableHeadRequests?: boolean;
     allowFullHTTPReads?: boolean;
 }
 
@@ -57,4 +58,12 @@ export interface DuckDBConfig {
      * The filesystem config
      */
     filesystem?: DuckDBFilesystemConfig;
+    /**
+     * Whether to allow unsigned extensions
+     */
+    allowUnsignedExtensions?: boolean;
+    /**
+     * Custom user agent string
+     */
+    customUserAgent?: string;
 }

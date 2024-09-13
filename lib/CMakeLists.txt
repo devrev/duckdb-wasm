@@ -12,13 +12,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(ignoreMe "${DUCKDB_WASM_VERSION}")
 
 option(DUCKDB_WASM_LOADABLE_EXTENSIONS "Build with loadable extensions" OFF)
-option(DUCKDB_WASM_LOADABLE_EXTENSIONS_UNSIGNED "Build with loadable extensions" OFF)
 
 if(DEFINED ENV{DUCKDB_WASM_LOADABLE_EXTENSIONS})
   set(DUCKDB_WASM_LOADABLE_EXTENSIONS ON)
-  if("$ENV{DUCKDB_WASM_LOADABLE_EXTENSIONS}" STREQUAL "unsigned")
-    set(DUCKDB_WASM_LOADABLE_EXTENSIONS_UNSIGNED ON)
-  endif()
 endif()
 
 
@@ -28,10 +24,6 @@ if(DUCKDB_WASM_LOADABLE_EXTENSIONS)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWASM_LOADABLE_EXTENSIONS=1 -DDUCKDB_EXTENSION_AUTOLOAD_DEFAULT=1 -fPIC")
 else()
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDISABLE_EXTENSION_LOAD=1")
-endif()
-
-if(DUCKDB_WASM_LOADABLE_EXTENSIONS_UNSIGNED)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWASM_LOADABLE_EXTENSIONS_UNSIGNED=1")
 endif()
 
 if(NOT EMSCRIPTEN)
@@ -141,7 +133,7 @@ if(EMSCRIPTEN)
   if(WITH_WASM_THREADS)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -sUSE_PTHREADS=1 -DWEBDB_THREADS=1")
     set(DUCKDB_CXX_FLAGS "${CMAKE_CXX_FLAGS} -sUSE_PTHREADS=1")
-    set(WASM_LINK_FLAGS "${WASM_LINK_FLAGS} -sUSE_PTHREADS=1 -sPTHREAD_POOL_SIZE=4")
+    set(WASM_LINK_FLAGS "${WASM_LINK_FLAGS} -sUSE_PTHREADS=1 -sPTHREAD_POOL_SIZE=4 -pthread")
     set(DUCKDB_PLATFORM "wasm_threads")
   else()
     set(CMAKE_CXX_FLAGS
@@ -158,7 +150,7 @@ else()
 endif()
 
 if (DUCKDB_WASM_LOADABLE_EXTENSIONS)
-  set(WASM_LINK_FLAGS "${WASM_LINK_FLAGS} -s MAIN_MODULE=1 -s  -s EXPORT_ALL=1 -s FILESYSTEM=1 -s ENVIRONMENT='web,node,worker' -s ALLOW_TABLE_GROWTH -lembind")
+  set(WASM_LINK_FLAGS "${WASM_LINK_FLAGS} -s MAIN_MODULE=1 -s FILESYSTEM=1 -s ENVIRONMENT='web,node,worker' -s ALLOW_TABLE_GROWTH -lembind")
 else()
   set(WASM_LINK_FLAGS "${WASM_LINK_FLAGS} -s FILESYSTEM=0 -s ENVIRONMENT='web,node,worker'")
 endif()
@@ -176,7 +168,6 @@ set(CMAKE_BUILD_PARALLEL_LEVEL ${NPROCS})
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/modules ${CMAKE_MODULE_PATH})
 
 include("${CMAKE_SOURCE_DIR}/cmake/duckdb.cmake")
-include("${CMAKE_SOURCE_DIR}/cmake/boost.cmake")
 include("${CMAKE_SOURCE_DIR}/cmake/arrow.cmake")
 include("${CMAKE_SOURCE_DIR}/cmake/benchmark.cmake")
 include("${CMAKE_SOURCE_DIR}/cmake/gflags.cmake")
@@ -254,32 +245,21 @@ add_library(
   ${CMAKE_SOURCE_DIR}/src/extensions/parquet_extension.cc)
 
 add_library(
-  duckdb_web_excel
-  ${CMAKE_SOURCE_DIR}/src/extensions/excel_extension.cc)
-
-add_library(
   duckdb_web_json
   ${CMAKE_SOURCE_DIR}/src/extensions/json_extension.cc)
 
 set(EXTENSION_CACHE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../.ccache/extension")
-set(EXCEL_EXTENSION_CACHE_FILE "${EXTENSION_CACHE_DIR}/excel")
 set(JSON_EXTENSION_CACHE_FILE "${EXTENSION_CACHE_DIR}/json")
 
-set(DUCKDB_WEB_EXCEL "")
-if(EXISTS "${EXCEL_EXTENSION_CACHE_FILE}")
-  set(DUCKDB_WEB_EXCEL "duckdb_web_excel")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDUCKDB_EXCEL_EXTENSION")
-endif()
 set(DUCKDB_WEB_JSON "")
 if(EXISTS "${JSON_EXTENSION_CACHE_FILE}")
   set(DUCKDB_WEB_JSON "duckdb_web_json")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDUCKDB_JSON_EXTENSION")
 endif()
 
-target_link_libraries(duckdb_web duckdb duckdb_web_fts duckdb_web_parquet ${DUCKDB_WEB_EXCEL} ${DUCKDB_WEB_JSON} arrow rapidjson ${THREAD_LIBS})
+target_link_libraries(duckdb_web duckdb duckdb_web_fts duckdb_web_parquet ${DUCKDB_WEB_JSON} arrow rapidjson ${THREAD_LIBS})
 target_link_libraries(duckdb_web_fts duckdb duckdb_fts)
 target_link_libraries(duckdb_web_parquet duckdb duckdb_parquet)
-target_link_libraries(duckdb_web_excel duckdb duckdb_excel)
 target_link_libraries(duckdb_web_json duckdb duckdb_json)
 
 # ---------------------------------------------------------------------------
@@ -341,6 +321,7 @@ if(EMSCRIPTEN)
           _duckdb_web_prepared_send, \
           _duckdb_web_query_fetch_results, \
           _duckdb_web_query_run, \
+          _duckdb_web_query_run_buffer, \
           _duckdb_web_reset, \
           _duckdb_web_tokenize, \
           _duckdb_web_udf_scalar_create \
@@ -377,7 +358,7 @@ if(NOT EMSCRIPTEN)
       ${CMAKE_SOURCE_DIR}/test/webdb_test.cc
       ${CMAKE_SOURCE_DIR}/test/tester.cc)
 
-  set(TEST_LIBS duckdb_web duckdb_web_fts duckdb_web_parquet ${DUCKDB_WEB_EXCEL} ${DUCKDB_WEB_JSON} gtest gmock gflags ${THREAD_LIBS})
+  set(TEST_LIBS duckdb_web duckdb_web_fts duckdb_web_parquet ${DUCKDB_WEB_JSON} gtest gmock gflags ${THREAD_LIBS})
 
   add_executable(tester ${TEST_CC})
   target_link_libraries(tester ${TEST_LIBS})

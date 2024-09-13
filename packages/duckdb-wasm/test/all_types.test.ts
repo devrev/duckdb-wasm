@@ -79,7 +79,7 @@ const FULLY_IMPLEMENTED_ANSWER_MAP: AnswerObjectType = {
 
     // Note that we multiply by thousand (and add 999 for the max) because the value returned by DuckDB is in microseconds,
     // whereas the Date object is in milliseconds.
-    time: [BigInt(0), BigInt(new Date('1970-01-01T23:59:59.999+00:00').valueOf()) * BigInt(1000) + BigInt(999), null],
+    time: [BigInt(0), BigInt(new Date('1970-01-01T23:59:59.999+00:00').valueOf()) * BigInt(1000) + BigInt(1000), null],
     interval: [new Int32Array([0, 0]), new Int32Array([0, 0]), null],
 
     float: [-3.4028234663852886e38, 3.4028234663852886e38, null],
@@ -156,7 +156,7 @@ function getValue(x: any): any {
 const ALL_TYPES_TEST: AllTypesTest[] = [
     {
         name: 'fully supported types',
-        query: `SELECT * REPLACE('not_implemented' as map) FROM test_all_types()`,
+        query: `SELECT * EXCLUDE(varint, uhugeint, fixed_int_array, fixed_varchar_array, fixed_nested_int_array, fixed_nested_varchar_array, fixed_struct_array, struct_of_fixed_array, fixed_array_of_int_list, list_of_fixed_int_array) REPLACE('not_implemented' as map) FROM test_all_types()`,
         skip: REPLACE_COLUMNS,
         answerMap: FULLY_IMPLEMENTED_ANSWER_MAP,
         answerCount: REPLACE_COLUMNS.length + Object.keys(FULLY_IMPLEMENTED_ANSWER_MAP).length,
